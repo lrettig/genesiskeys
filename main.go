@@ -24,7 +24,7 @@ import (
 
 const hrp = "sm"
 
-// Placeholder function: replace this with your function
+// Process input values and generate vesting and vault accounts.
 func processKeys(keys []core.PublicKey, numRequired uint8, amountTotal uint64) (templateAddress, vestingAddress, vaultAddress string, amountInitial uint64, vestStart, vestEnd uint32) {
 	vestingArgs := &multisig.SpawnArguments{
 		Required:   numRequired,
@@ -119,6 +119,10 @@ func main() {
 			}
 			copy(key[:], keyBytes)
 			keys = append(keys, key)
+		}
+		if len(keys) == 0 {
+			log.Printf("Error: No keys for record at line %d: %s\n", line, name)
+			continue
 		}
 
 		mStr, nStr := record[8], record[9]
