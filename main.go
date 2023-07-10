@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"encoding/hex"
 	"flag"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -43,11 +42,10 @@ func processKeys(keys []core.PublicKey, numRequired uint8, amountTotal uint64) (
 		VestingEnd:   types.LayerID(uint32(constants.VestEnd)),
 	}
 	vaultAccount := core.ComputePrincipal(vault.TemplateAddress, vaultArgs)
-	types.SetNetworkHRP(hrp)
-	fmt.Printf("vesting: %s\nvault: %s\n", vestingAccount.String(), vaultAccount.String())
-	fmt.Println("public keys:")
+	log.Printf("vesting: %s\nvault: %s\n", vestingAccount.String(), vaultAccount.String())
+	log.Println("public keys:")
 	for i, key := range vestingArgs.PublicKeys {
-		fmt.Printf("%d: 0x%x\n", i, key[:])
+		log.Printf("%d: 0x%x\n", i, key[:])
 	}
 	return vesting.TemplateAddress.String(), vestingAccount.String(), vaultAccount.String(), amountInitial, uint32(constants.VestStart), uint32(constants.VestEnd)
 }
@@ -75,9 +73,12 @@ func main() {
 
 	line := 1
 
+	// We only need to do this once
+	types.SetNetworkHRP(hrp)
+
 	cw := csv.NewWriter(os.Stdout)
 	// Write headers to the output CSV
-	cw.Write([]string{"Name", "Amount", "TemplateAddress", "VestingAddress", "VaultAddress", "AmountInitial", "VestStart", "VestEnd"})
+	cw.Write([]string{"Name", "AmountInitial", "AmountTotal", "TemplateAddress", "VestingAddress", "VaultAddress", "AmountInitial", "VestStart", "VestEnd"})
 
 	for {
 		record, err := r.Read()
@@ -115,7 +116,7 @@ func main() {
 			keys = append(keys, key)
 		}
 
-		mStr, nStr := record[6], record[7]
+		mStr, nStr := record[8], record[9]
 		var m, n uint8
 		if mStr != "" || nStr != "" {
 			if mStr == "" || nStr == "" {
@@ -152,6 +153,7 @@ func main() {
 			vestingAddress,
 			vaultAddress,
 			strconv.FormatUint(amountInitial, 10),
+			strconv.FormatUint(amount, 10),
 			strconv.FormatUint(uint64(vestStart), 10),
 			strconv.FormatUint(uint64(vestEnd), 10),
 		})
