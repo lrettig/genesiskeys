@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"encoding/hex"
 	"flag"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -34,13 +33,13 @@ func main() {
 
 	r := csv.NewReader(file)
 
-	// Skip the header
-	if _, err := r.Read(); err != nil {
+	// Skip the first line (header)
+	_, err = r.Read()
+	if err != nil {
 		log.Fatal("Could not read the CSV file: ", err)
 	}
 
-	// Initialize the line number
-	line := 0
+	line := 1
 
 	for {
 		record, err := r.Read()
@@ -51,7 +50,6 @@ func main() {
 			log.Fatal("Could not read the CSV file: ", err)
 		}
 
-		// Increment the line number for each record
 		line++
 
 		name := record[0]
@@ -75,7 +73,7 @@ func main() {
 				continue
 			}
 
-			keys = append(keys, keyBytes)
+			keys = append(keys, ed25519.PublicKey(keyBytes))
 		}
 
 		mStr, nStr := record[6], record[7]
@@ -107,6 +105,9 @@ func main() {
 		}
 
 		result := processKeys(keys, m, n)
-		fmt.Println(strings.Join([]string{name, strconv.FormatUint(amount, 10), result}, ","))
+		// Use csv.Writer to correctly escape names that contain commas
+		cw := csv.NewWriter(os.Stdout)
+		cw.Write([]string{name, strconv.FormatUint(amount, 10), result})
+		cw.Flush()
 	}
 }
