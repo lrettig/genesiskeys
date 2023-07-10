@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"encoding/hex"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"github.com/spacemeshos/go-spacemesh/genvm/templates/multisig"
 	"github.com/spacemeshos/go-spacemesh/genvm/templates/vault"
 	"github.com/spacemeshos/go-spacemesh/genvm/templates/vesting"
+	smlog "github.com/spacemeshos/go-spacemesh/log"
 )
 
 const hrp = "sm"
@@ -73,12 +75,15 @@ func main() {
 
 	line := 1
 
-	// We only need to do this once
+	// Disable go-spacemesh logging, it gets printed to STDOUT and messes up the CSV
+	smlog.SetupGlobal(smlog.NewNop())
+
+	// Set the HRP, we only have to do this once
 	types.SetNetworkHRP(hrp)
 
 	cw := csv.NewWriter(os.Stdout)
 	// Write headers to the output CSV
-	cw.Write([]string{"Name", "AmountInitial", "AmountTotal", "TemplateAddress", "VestingAddress", "VaultAddress", "AmountInitial", "VestStart", "VestEnd"})
+	cw.Write([]string{"Name", "AmountInitial", "AmountTotal", "TemplateAddress", "VestingAddress", "VaultAddress", "VestStart", "VestEnd"})
 
 	for {
 		record, err := r.Read()
@@ -147,13 +152,13 @@ func main() {
 		templateAddress, vestingAddress, vaultAddress, amountInitial, vestStart, vestEnd := processKeys(keys, m, amount)
 		// Use csv.Writer to correctly escape names that contain commas
 		cw.Write([]string{
-			name,
+			//name,
+			fmt.Sprintf("record%d", line),
+			strconv.FormatUint(amountInitial, 10),
 			strconv.FormatUint(amount, 10),
 			templateAddress,
 			vestingAddress,
 			vaultAddress,
-			strconv.FormatUint(amountInitial, 10),
-			strconv.FormatUint(amount, 10),
 			strconv.FormatUint(uint64(vestStart), 10),
 			strconv.FormatUint(uint64(vestEnd), 10),
 		})
