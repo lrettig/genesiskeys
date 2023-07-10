@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"io"
@@ -33,6 +34,11 @@ func main() {
 
 	r := csv.NewReader(file)
 
+	// Skip the header
+	if _, err := r.Read(); err != nil {
+		log.Fatal("Could not read the CSV file: ", err)
+	}
+
 	// Initialize the line number
 	line := 0
 
@@ -63,13 +69,13 @@ func main() {
 				continue
 			}
 
-			keyBytes := []byte(keyStr) // replace with your own decoding if necessary
-			if len(keyBytes) != ed25519.PublicKeySize {
+			keyBytes, err := hex.DecodeString(keyStr)
+			if err != nil || len(keyBytes) != ed25519.PublicKeySize {
 				log.Printf("Error: Invalid key for record at line %d: %s\n", line, name)
 				continue
 			}
 
-			keys = append(keys, ed25519.PublicKey(keyBytes))
+			keys = append(keys, keyBytes)
 		}
 
 		mStr, nStr := record[6], record[7]
