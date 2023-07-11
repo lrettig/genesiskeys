@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -75,6 +76,9 @@ func main() {
 
 	line := 1
 
+	// Audit total vaulted supply
+	vaultTotal := uint64(0)
+
 	// Disable go-spacemesh logging, it gets printed to STDOUT and messes up the CSV
 	smlog.SetupGlobal(smlog.NewNop())
 
@@ -83,7 +87,7 @@ func main() {
 
 	cw := csv.NewWriter(os.Stdout)
 	// Write headers to the output CSV
-	cw.Write([]string{"Name", "AmountInitial", "AmountTotal", "TemplateAddress", "VestingAddress", "VaultAddress", "VestStart", "VestEnd"})
+	cw.Write([]string{"Name", "AmountInitialSmidge", "AmountTotalSmidge", "TemplateAddress", "VestingAddress", "VaultAddress", "VestStart", "VestEnd"})
 
 	for {
 		record, err := r.Read()
@@ -100,13 +104,19 @@ func main() {
 
 		amountStr := strings.ReplaceAll(record[1], ",", "")
 		amount, err := strconv.ParseUint(amountStr, 10, 64)
+		// Convert amount units from SMH -> smidge
+		if amount > math.MaxUint64/constants.OneSmesh {
+			log.Fatal("math overflow")
+		}
+		amountSmidge := amount * constants.OneSmesh
+
 		if err != nil {
 			log.Printf("Warning: Invalid amount for record at line %d: %s\n", line, name)
 			continue
 		}
 
 		var keys []core.PublicKey
-		for _, keyStr := range record[4:8] {
+		for _, keyStr := range record[2:7] {
 			if keyStr == "" {
 				continue
 			}
@@ -125,7 +135,7 @@ func main() {
 			continue
 		}
 
-		mStr, nStr := record[8], record[9]
+		mStr, nStr := record[7], record[8]
 		var m, n uint8
 		if mStr != "" || nStr != "" {
 			if mStr == "" || nStr == "" {
@@ -153,13 +163,15 @@ func main() {
 			}
 		}
 
-		templateAddress, vestingAddress, vaultAddress, amountInitial, vestStart, vestEnd := processKeys(keys, m, amount)
+		vaultTotal += amount
+		templateAddress, vestingAddress, vaultAddress, amountInitial, vestStart, vestEnd := processKeys(keys, m, amountSmidge)
+
 		// Use csv.Writer to correctly escape names that contain commas
 		cw.Write([]string{
 			//name,
 			fmt.Sprintf("record%d", line),
 			strconv.FormatUint(amountInitial, 10),
-			strconv.FormatUint(amount, 10),
+			strconv.FormatUint(amountSmidge, 10),
 			templateAddress,
 			vestingAddress,
 			vaultAddress,
@@ -167,5 +179,9 @@ func main() {
 			strconv.FormatUint(uint64(vestEnd), 10),
 		})
 		cw.Flush()
+	}
+	log.Printf("Total vaulted issuance: %d SMH", vaultTotal)
+	if vaultTotal*constants.OneSmesh != constants.TotalVaulted {
+		log.Printf("ERROR: expected total issuance of %d SMH", constants.TotalVaulted/constants.OneSmesh)
 	}
 }
