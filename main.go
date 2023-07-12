@@ -41,8 +41,8 @@ func processKeys(keys []core.PublicKey, numRequired uint8, amountTotal uint64) (
 		TotalAmount:         amountTotal,
 		InitialUnlockAmount: amountInitial,
 		// All genesis vaults have the same vesting schedule
-		VestingStart: types.LayerID(uint32(constants.VestStart)),
-		VestingEnd:   types.LayerID(uint32(constants.VestEnd)),
+		VestingStart: types.LayerID(constants.VestStart),
+		VestingEnd:   types.LayerID(constants.VestEnd),
 	}
 	vaultAccount := core.ComputePrincipal(vault.TemplateAddress, vaultArgs)
 	log.Printf("vesting: %s\nvault: %s\n", vestingAccount.String(), vaultAccount.String())
@@ -122,11 +122,11 @@ func main() {
 			}
 
 			keyBytes, err := hex.DecodeString(keyStr)
-			key := [ed25519.PublicKeySize]byte{}
 			if err != nil || len(keyBytes) != ed25519.PublicKeySize {
 				log.Printf("Error: Invalid key for record at line %d: %s\n", line, name)
 				continue
 			}
+			key := [ed25519.PublicKeySize]byte{}
 			copy(key[:], keyBytes)
 			keys = append(keys, key)
 		}
@@ -161,6 +161,10 @@ func main() {
 				log.Printf("Error: n does not match the number of keys for record at line %d: %s\n", line, name)
 				continue
 			}
+		}
+		if m != uint8(len(keys)) {
+			log.Printf("Error: m doesn't match number of keys at line %d: %s\n", line, name)
+			continue
 		}
 
 		vaultTotal += amount
